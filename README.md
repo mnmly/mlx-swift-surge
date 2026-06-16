@@ -12,6 +12,11 @@ This package runs the full `image → points / depth / intrinsics` pipeline
 natively on Apple Silicon (macOS / iOS / visionOS / tvOS) with no Python or
 PyTorch at runtime.
 
+![SURGEDemo: input image with its point cloud, textured mesh, and normal mesh](Assets/surgedemo.png)
+
+> The `SURGEDemo` macOS app — one image → point cloud, textured mesh, and normal
+> mesh in RealityKit (here: ~218k points / ~434k faces in 0.23 s).
+
 ## Architecture
 
 | Stage | Python (`surge`) | Swift (`MLXSurGe`) |
