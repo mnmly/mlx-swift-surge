@@ -19,8 +19,8 @@ import UniformTypeIdentifiers
 //
 // MainActor-isolated (the project defaults to MainActor isolation). All heavy
 // work — model download, weight load, inference — runs off the main actor in a
-// `Task.detached`; only Sendable values (`SurGeFrame`, progress fractions) hop
-// back here. `SurGeSession` is `@unchecked Sendable`, so the single detached
+// `Task.detached`; only Sendable values (`SurGePointCloud`, progress fractions)
+// hop back here. `SurGeSession` is `@unchecked Sendable`, so the single detached
 // driver can own it while the UI reads snapshots.
 
 @Observable
@@ -36,7 +36,7 @@ final class SurGeViewModel {
     var phase: Phase = .needsModel
     var status: String = ""
     var inputImage: CGImage?
-    var depthImage: CGImage?
+    var pointCloud: SurGePointCloud?
     var lastSeconds: Double?
 
     private let cacheDir = SurGeModelDownloader.defaultCacheDirectory()
@@ -78,7 +78,7 @@ final class SurGeViewModel {
         // "Open Image…" button) can't drive the session concurrently.
         guard phase == .ready else { return }
         inputImage = cgImage
-        depthImage = nil
+        pointCloud = nil
         phase = .inferring
         status = "Running inference…"
 
@@ -106,17 +106,18 @@ final class SurGeViewModel {
                 await MainActor.run { [weak self] in self?.session = session }
             }
 
-            let (rgba, ow, oh, secs): ([UInt8], Int, Int, Double) = autoreleasepool {
+            // SurGePointCloud is Sendable — produce it off-main, hand it back.
+            let (cloud, secs): (SurGePointCloud, Double) = autoreleasepool {
                 let image = MLXArray(floats, [1, h, w, 3])
-                let frame = session.infer(image)
-                return (frame.depthRGBA(), frame.width, frame.height, frame.inferenceSeconds)
+                let start = Date()
+                let cloud = session.inferPointCloud(image)
+                return (cloud, Date().timeIntervalSince(start))
             }
-            // Hand back only Sendable bytes; build the CGImage on the main actor.
             await MainActor.run { [weak self] in
-                self?.depthImage = Self.makeCGImage(rgba: rgba, width: ow, height: oh)
+                self?.pointCloud = cloud
                 self?.lastSeconds = secs
                 self?.phase = .ready
-                self?.status = String(format: "Done in %.2f s", secs)
+                self?.status = String(format: "%d points in %.2f s", cloud.count, secs)
             }
         }
     }
@@ -141,16 +142,6 @@ final class SurGeViewModel {
             floats[i * 3 + 2] = Float(rgba[i * 4 + 2]) / 255
         }
         return (floats, h, w)
-    }
-
-    nonisolated static func makeCGImage(rgba: [UInt8], width: Int, height: Int) -> CGImage? {
-        guard let provider = CGDataProvider(data: Data(rgba) as CFData) else { return nil }
-        let cs = CGColorSpace(name: CGColorSpace.sRGB)!
-        let info = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
-        return CGImage(
-            width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
-            bytesPerRow: width * 4, space: cs, bitmapInfo: info,
-            provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
     }
 }
 
@@ -185,7 +176,7 @@ struct ContentView: View {
             case .ready, .inferring:
                 HStack(spacing: 12) {
                     imagePane(vm.inputImage, label: "Input")
-                    imagePane(vm.depthImage, label: "Depth")
+                    pointCloudPane
                 }
                 HStack {
                     Button("Open Image…") { openImage() }
@@ -218,6 +209,23 @@ struct ContentView: View {
                     .overlay(Text("—").foregroundStyle(.tertiary))
             }
             Text(label).font(.caption)
+        }
+    }
+
+    @ViewBuilder
+    private var pointCloudPane: some View {
+        VStack(spacing: 4) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 8).fill(Color.black.opacity(0.85))
+                if let cloud = vm.pointCloud, cloud.count > 0 {
+                    PointCloudView(cloud: cloud)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                } else {
+                    Text(vm.phase == .inferring ? "…" : "—").foregroundStyle(.tertiary)
+                }
+            }
+            .frame(width: 256, height: 256)
+            Text("Point cloud").font(.caption)
         }
     }
 

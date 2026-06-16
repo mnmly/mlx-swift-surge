@@ -56,5 +56,13 @@ final class SessionTests: XCTestCase {
         let r = session.benchmark(image: image, warmup: 0, iterations: 2)
         XCTAssertEqual(r.iterations, 2)
         XCTAssertGreaterThan(r.medianSeconds, 0)
+
+        // Point-cloud path (the app's RealityKit view consumes this).
+        let cloud = session.inferPointCloud(image, maxPoints: 50_000)
+        XCTAssertGreaterThan(cloud.count, 0)
+        XCTAssertLessThanOrEqual(cloud.count, 50_000)
+        XCTAssertEqual(cloud.positions.count, cloud.count * 3)
+        XCTAssertEqual(cloud.colors.count, cloud.count * 4)
+        XCTAssertGreaterThan(cloud.radius, 0)
     }
 }
