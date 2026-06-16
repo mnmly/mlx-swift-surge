@@ -1,0 +1,86 @@
+{
+  "size": 448,
+  "num_tokens": 1024,
+  "grid": 32,
+  "base_h": 32,
+  "base_w": 32,
+  "seed": 42,
+  "keys": {
+    "input_nhwc": [
+      1,
+      448,
+      448,
+      3
+    ],
+    "pos_embed_patch_37": [
+      1,
+      37,
+      37,
+      1024
+    ],
+    "pos_embed_interp_grid": [
+      1,
+      32,
+      32,
+      1024
+    ],
+    "encoder_feature": [
+      1,
+      32,
+      32,
+      1024
+    ],
+    "nad_level0": [
+      1,
+      32,
+      32,
+      1026
+    ],
+    "nad_level1": [
+      1,
+      64,
+      64,
+      2
+    ],
+    "nad_level2": [
+      1,
+      128,
+      128,
+      2
+    ],
+    "nad_level3": [
+      1,
+      256,
+      256,
+      2
+    ],
+    "nad_level4": [
+      1,
+      512,
+      512,
+      2
+    ],
+    "forward_points": [
+      1,
+      448,
+      448,
+      3
+    ],
+    "infer_points": [
+      1,
+      448,
+      448,
+      3
+    ],
+    "infer_depth": [
+      1,
+      448,
+      448
+    ],
+    "infer_intrinsics": [
+      1,
+      3,
+      3
+    ]
+  }
+}

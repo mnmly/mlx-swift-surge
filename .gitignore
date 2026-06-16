@@ -1,0 +1,33 @@
+# Xcode / Swift
+.build/
+.swiftpm/
+.xcdd/
+*.xcodeproj/
+xcuserdata/
+*.xcworkspace/
+DerivedData/
+*.playground/playground.xcworkspace
+
+# Profiling / coverage output
+*.profraw
+*.profdata
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Build artifacts
+*.o
+*.d
+*.a
+*.dylib
+
+# Local test files
+test_idx.swift
+
+# Generated parity fixtures (large)
+Tests/Fixtures/*.safetensors
+
+# DocC build output (served via gh-pages / Actions, not from main)
+/docs/

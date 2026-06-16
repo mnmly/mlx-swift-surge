@@ -1,0 +1,57 @@
+# Builds DocC on push to main and deploys to GitHub Pages.
+#
+# ONE-TIME SETUP (the deploy step fails with "HttpError: Not Found" until done):
+#   gh api -X POST repos/mnmly/mlx-swift-surge/pages -f build_type=workflow
+# or: Settings → Pages → Source → "GitHub Actions".
+#
+# Builds via `Scripts/build_docs.sh`, which uses `xcodebuild docbuild` +
+# `docc transform-for-static-hosting` (the SwiftPM-CLI doc build can't locate
+# the Metal toolchain that mlx-swift needs).
+
+name: Build and deploy DocC
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    env:
+      TARGETS: MLXSurGe
+      HOSTING_BASE_PATH: mlx-swift-surge
+      REPO_URL: https://github.com/mnmly/mlx-swift-surge
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Build docs
+        run: ./Scripts/build_docs.sh
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
