@@ -14,10 +14,11 @@ struct PointCloudView: View {
     let cloud: SurGePointCloud
 
     var body: some View {
+        // Single make-closure: the caller forces a fresh view (and a rebuild)
+        // per inference with `.id(...)`, so we never mutate `content.entities`
+        // mid-iteration (which crashes RealityKit) or rebuild on spurious
+        // SwiftUI updates.
         RealityView { content in
-            if let entity = try? Self.makeEntity(cloud) { content.add(entity) }
-        } update: { content in
-            for e in content.entities { content.remove(e) }
             if let entity = try? Self.makeEntity(cloud) { content.add(entity) }
         }
         .realityViewCameraControls(.orbit)

@@ -56,7 +56,7 @@ struct SurGeBench: AsyncParsableCommand {
 
     func run() async throws {
         if cacheLimitMB > 0 {
-            GPU.set(cacheLimit: cacheLimitMB * 1024 * 1024)
+            Memory.cacheLimit = cacheLimitMB * 1024 * 1024
         }
 
         // Resolve weights: explicit path, else the shared on-device cache.

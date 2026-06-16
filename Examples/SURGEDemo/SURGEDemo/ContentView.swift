@@ -37,6 +37,7 @@ final class SurGeViewModel {
     var status: String = ""
     var inputImage: CGImage?
     var pointCloud: SurGePointCloud?
+    var inferenceID = 0   // bumped per result; keys the RealityView for a clean rebuild
     var lastSeconds: Double?
 
     private let cacheDir = SurGeModelDownloader.defaultCacheDirectory()
@@ -115,6 +116,7 @@ final class SurGeViewModel {
             }
             await MainActor.run { [weak self] in
                 self?.pointCloud = cloud
+                self?.inferenceID += 1
                 self?.lastSeconds = secs
                 self?.phase = .ready
                 self?.status = String(format: "%d points in %.2f s", cloud.count, secs)
@@ -219,6 +221,7 @@ struct ContentView: View {
                 RoundedRectangle(cornerRadius: 8).fill(Color.black.opacity(0.85))
                 if let cloud = vm.pointCloud, cloud.count > 0 {
                     PointCloudView(cloud: cloud)
+                        .id(vm.inferenceID)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                 } else {
                     Text(vm.phase == .inferring ? "…" : "—").foregroundStyle(.tertiary)

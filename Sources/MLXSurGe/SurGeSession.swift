@@ -160,14 +160,14 @@ public final class SurGeSession: @unchecked Sendable {
     /// the CLI; identical compute path as the GUI's `infer`.
     public func benchmark(image: MLXArray, warmup: Int, iterations: Int) -> SurGeBenchResult {
         for _ in 0..<max(0, warmup) { inferArrays(image) }
-        let memBefore = GPU.activeMemory
+        let memBefore = Memory.activeMemory
         var times: [Double] = []
         for _ in 0..<max(1, iterations) {
             let s = CFAbsoluteTimeGetCurrent()
             inferArrays(image)
             times.append(CFAbsoluteTimeGetCurrent() - s)
         }
-        let memAfter = GPU.activeMemory
+        let memAfter = Memory.activeMemory
         let sorted = times.sorted()
         return SurGeBenchResult(
             iterations: times.count,
@@ -176,6 +176,6 @@ public final class SurGeSession: @unchecked Sendable {
             minSeconds: sorted.first ?? 0,
             maxSeconds: sorted.last ?? 0,
             activeMemoryDeltaBytes: Int(memAfter) - Int(memBefore),
-            peakMemoryBytes: GPU.peakMemory)
+            peakMemoryBytes: Memory.peakMemory)
     }
 }
