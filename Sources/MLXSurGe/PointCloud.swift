@@ -29,8 +29,10 @@ extension SurGeSession {
     /// - Points are converted RDF → RUB (`x, -y, -z`) so the cloud sits upright
     ///   and faces the camera in RealityKit's Y-up / -Z-forward space.
     /// - Downsampled by striding when the valid count exceeds `maxPoints`.
-    public func inferPointCloud(_ image: MLXArray, maxPoints: Int = 300_000) -> SurGePointCloud {
-        let out = inferArrays(image)
+    public func inferPointCloud(
+        _ image: MLXArray, maxPoints: Int = 300_000, fovX: Float? = nil
+    ) -> SurGePointCloud {
+        let out = inferArrays(image, fovX: fovX)
         let pointsArr = out["points"]!.asType(.float32)   // (1, H, W, 3)
         let depthArr = out["depth"]!.asType(.float32)      // (1, H, W)
         let H = pointsArr.dim(pointsArr.ndim - 3)

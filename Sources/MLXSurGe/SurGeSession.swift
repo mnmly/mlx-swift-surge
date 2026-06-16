@@ -114,19 +114,25 @@ public final class SurGeSession: @unchecked Sendable {
 
     /// Run inference and materialize the outputs. The shared compute path —
     /// both frontends and the benchmark funnel through it.
+    ///
+    /// - `fovX`: known horizontal field of view in **radians** (e.g. derived
+    ///   from EXIF). Overrides `config.fovX`; when both are nil the focal is
+    ///   estimated. A known FoV fixes the focal and solves shift-only — more
+    ///   accurate perspective + intrinsics.
     @discardableResult
-    public func inferArrays(_ image: MLXArray) -> [String: MLXArray] {
+    public func inferArrays(_ image: MLXArray, fovX: Float? = nil) -> [String: MLXArray] {
         let out = model.infer(
             image: image, tokens: config.tokens,
-            resizeOutput: true, forceProjection: config.forceProjection, fovX: config.fovX)
+            resizeOutput: true, forceProjection: config.forceProjection,
+            fovX: fovX ?? config.fovX)
         MLX.eval(Array(out.values))
         return out
     }
 
     /// Run inference and build a Sendable ``SurGeFrame`` snapshot (for the GUI).
-    public func infer(_ image: MLXArray) -> SurGeFrame {
+    public func infer(_ image: MLXArray, fovX: Float? = nil) -> SurGeFrame {
         let start = CFAbsoluteTimeGetCurrent()
-        let out = inferArrays(image)
+        let out = inferArrays(image, fovX: fovX)
         let seconds = CFAbsoluteTimeGetCurrent() - start
 
         let depthArr = out["depth"]!.asType(.float32)

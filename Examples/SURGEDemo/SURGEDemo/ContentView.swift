@@ -73,7 +73,7 @@ final class SurGeViewModel {
         }
     }
 
-    func runInference(on cgImage: CGImage) {
+    func runInference(on cgImage: CGImage, fovX: Float? = nil) {
         // Single-writer invariant for SurGeSession: only fire when `.ready`, and
         // flip to `.inferring` immediately so a second call (and the disabled
         // "Open Image…" button) can't drive the session concurrently.
@@ -88,6 +88,7 @@ final class SurGeViewModel {
         let (floats, h, w) = Self.nhwcFloats(cgImage)
         let dir = cacheDir.path
         let existing = session
+        let fov = fovX  // Sendable Float? captured into the detached task
 
         Task.detached { [weak self] in
             let session: SurGeSession
@@ -111,7 +112,7 @@ final class SurGeViewModel {
             let (geo, secs): (SurGeGeometry, Double) = autoreleasepool {
                 let image = MLXArray(floats, [1, h, w, 3])
                 let start = Date()
-                let geo = session.inferGeometry(image)
+                let geo = session.inferGeometry(image, fovX: fov)
                 return (geo, Date().timeIntervalSince(start))
             }
             await MainActor.run { [weak self] in
@@ -119,8 +120,11 @@ final class SurGeViewModel {
                 self?.inferenceID += 1
                 self?.lastSeconds = secs
                 self?.phase = .ready
+                let fovStr = fov.map { String(format: "FoV %.0f° (EXIF)", $0 * 180 / .pi) }
+                    ?? "FoV estimated"
                 self?.status = String(
-                    format: "%d points · %d faces · %.2f s", geo.pointCount, geo.faceCount, secs)
+                    format: "%d points · %d faces · %.2f s · %@",
+                    geo.pointCount, geo.faceCount, secs, fovStr)
             }
         }
     }
@@ -247,6 +251,16 @@ struct ContentView: View {
         guard panel.runModal() == .OK, let url = panel.url,
               let src = CGImageSourceCreateWithURL(url as CFURL, nil)
         else { return }
+
+        // EXIF 35mm-equivalent focal → a known FoV (fixes the focal instead of
+        // estimating it). Orientation-independent; combined with the oriented
+        // image dims below.
+        var f35: Double?
+        if let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any],
+           let exif = props[kCGImagePropertyExifDictionary] as? [CFString: Any] {
+            f35 = exif[kCGImagePropertyExifFocalLenIn35mmFilm] as? Double
+        }
+
         // `CreateImageAtIndex` ignores the EXIF orientation tag (Photos exports
         // carry one), so portrait shots come in sideways. The thumbnail path with
         // `WithTransform` bakes the orientation into upright pixels, and the
@@ -257,7 +271,20 @@ struct ContentView: View {
             kCGImageSourceThumbnailMaxPixelSize: 1024,
         ]
         guard let cg = CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary) else { return }
-        vm.runInference(on: cg)
+
+        let fovX: Float? = (f35.map { $0 > 0 } ?? false)
+            ? Self.horizontalFOV(focal35mm: f35!, width: cg.width, height: cg.height) : nil
+        vm.runInference(on: cg, fovX: fovX)
+    }
+
+    /// Horizontal field of view (radians) from a 35mm-equivalent focal length.
+    /// Goes via the full-frame diagonal (43.27 mm) so it's correct for any
+    /// aspect ratio / orientation, then projects to the image's horizontal axis.
+    private static func horizontalFOV(focal35mm f35: Double, width: Int, height: Int) -> Float {
+        let fovDiag = 2 * atan(43.27 / (2 * f35))
+        let w = Double(width), h = Double(height)
+        let fovX = 2 * atan(tan(fovDiag / 2) * w / (w * w + h * h).squareRoot())
+        return Float(fovX)
     }
 }
 

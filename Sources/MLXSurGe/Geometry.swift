@@ -46,9 +46,9 @@ extension SurGeSession {
     /// - `maxPoints`: cap on point-cloud points (strided).
     /// - `meshStride`: grid stride for the surface mesh (1 = full res).
     public func inferGeometry(
-        _ image: MLXArray, maxPoints: Int = 250_000, meshStride: Int = 2
+        _ image: MLXArray, maxPoints: Int = 250_000, meshStride: Int = 2, fovX: Float? = nil
     ) -> SurGeGeometry {
-        let out = inferArrays(image)
+        let out = inferArrays(image, fovX: fovX)
         let pointsArr = out["points"]!.asType(.float32)   // (1, H, W, 3)
         let depthArr = out["depth"]!.asType(.float32)      // (1, H, W)
         let H = pointsArr.dim(pointsArr.ndim - 3)
