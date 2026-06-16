@@ -245,9 +245,18 @@ struct ContentView: View {
         panel.allowedContentTypes = [.png, .jpeg, .image]
         panel.allowsMultipleSelection = false
         guard panel.runModal() == .OK, let url = panel.url,
-              let src = CGImageSourceCreateWithURL(url as CFURL, nil),
-              let cg = CGImageSourceCreateImageAtIndex(src, 0, nil)
+              let src = CGImageSourceCreateWithURL(url as CFURL, nil)
         else { return }
+        // `CreateImageAtIndex` ignores the EXIF orientation tag (Photos exports
+        // carry one), so portrait shots come in sideways. The thumbnail path with
+        // `WithTransform` bakes the orientation into upright pixels, and the
+        // max-pixel cap keeps the point map / mesh tractable for big photos.
+        let opts: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: 1024,
+        ]
+        guard let cg = CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary) else { return }
         vm.runInference(on: cg)
     }
 }
