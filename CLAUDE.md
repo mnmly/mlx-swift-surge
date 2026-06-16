@@ -1,4 +1,4 @@
-# mlx-swift-surge — agent notes
+# mlx-swift-SurGe — agent notes
 
 Swift / mlx-swift port of SurGe (DINOv2 ViT-L/14 encoder + Neighborhood
 Attention Decoder). Predicts an affine point map, depth, and camera intrinsics

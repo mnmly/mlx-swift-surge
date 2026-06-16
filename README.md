@@ -1,6 +1,6 @@
-# mlx-swift-surge
+# mlx-swift-SurGe
 
-📖 [API documentation](https://mnmly.github.io/mlx-swift-surge/)
+📖 [API documentation](https://mnmly.github.io/mlx-swift-SurGe/)
 
 A Swift / [mlx-swift](https://github.com/ml-explore/mlx-swift) port of
 [**SurGe**](https://github.com/karimknaebel/surge) — *Improved Surface Geometry
@@ -50,7 +50,7 @@ quality build, where the head's `torch.autocast(float32)` is a no-op).
 ## Installation
 
 ```swift
-.package(url: "https://github.com/<you>/mlx-swift-surge", from: "0.1.0")
+.package(url: "https://github.com/mnmly/mlx-swift-SurGe", from: "0.1.0")
 ```
 
 Then add the `MLXSurGe` product to your target.
@@ -152,7 +152,7 @@ download to work.
 
 ## Documentation
 
-API reference: **https://mnmly.github.io/mlx-swift-surge/** (built from DocC and
+API reference: **https://mnmly.github.io/mlx-swift-SurGe/** (built from DocC and
 deployed by `.github/workflows/docs.yml`). Build locally with
 `Scripts/build_docs.sh` (or `EMIT_LLMS_TXT=1 Scripts/build_docs.sh` for an
 `llms.txt` export). It uses `xcodebuild docbuild` + `docc

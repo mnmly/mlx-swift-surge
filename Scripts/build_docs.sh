@@ -15,7 +15,7 @@
 # Env:
 #   SCHEME             Xcode scheme to docbuild. Default: MLXSurGe.
 #   TARGETS            DocC module name(s). Default: MLXSurGe.
-#   HOSTING_BASE_PATH  GitHub Pages repo path. Default: mlx-swift-surge.
+#   HOSTING_BASE_PATH  GitHub Pages repo path. Default: mlx-swift-SurGe.
 #   OUTPUT_DIR         Default: docs.
 #   DERIVED_DATA       Default: .xcdd.
 #   EMIT_LLMS_TXT=1    Derive docs/llms.txt from the render index.
@@ -25,7 +25,7 @@ cd "$(dirname "$0")/.."
 
 SCHEME="${SCHEME:-MLXSurGe}"
 TARGETS="${TARGETS:-MLXSurGe}"
-HOSTING_BASE_PATH="${HOSTING_BASE_PATH:-mlx-swift-surge}"
+HOSTING_BASE_PATH="${HOSTING_BASE_PATH:-mlx-swift-SurGe}"
 OUTPUT_DIR="${OUTPUT_DIR:-docs}"
 DERIVED_DATA="${DERIVED_DATA:-.xcdd}"
 

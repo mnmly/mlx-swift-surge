@@ -1,7 +1,7 @@
 # Builds DocC on push to main and deploys to GitHub Pages.
 #
 # ONE-TIME SETUP (the deploy step fails with "HttpError: Not Found" until done):
-#   gh api -X POST repos/mnmly/mlx-swift-surge/pages -f build_type=workflow
+#   gh api -X POST repos/mnmly/mlx-swift-SurGe/pages -f build_type=workflow
 # or: Settings → Pages → Source → "GitHub Actions".
 #
 # Builds via `Scripts/build_docs.sh`, which uses `xcodebuild docbuild` +
@@ -29,8 +29,8 @@ jobs:
     runs-on: macos-15
     env:
       TARGETS: MLXSurGe
-      HOSTING_BASE_PATH: mlx-swift-surge
-      REPO_URL: https://github.com/mnmly/mlx-swift-surge
+      HOSTING_BASE_PATH: mlx-swift-SurGe
+      REPO_URL: https://github.com/mnmly/mlx-swift-SurGe
     steps:
       - uses: actions/checkout@v6
 
