@@ -138,7 +138,7 @@ presentation. See `Sources/MLXSurGe/SurGeSession.swift`.
 |------|------|
 | `Sources/MLXSurGe/` | Library: model, `SurGeSession`, `SurGeModelDownloader` |
 | `Examples/surge-bench/` | CLI benchmark (drives `SurGeSession`) |
-| `Examples/SURGEDemo/` | SwiftUI macOS app: pick an image → **3D point cloud** (RealityKit, orbit camera), with a **Download Model** button |
+| `Examples/SURGEDemo/` | SwiftUI macOS app: pick an image → **point cloud + textured mesh + normal mesh** (RealityKit, orbit camera), with a **Download Model** button |
 
 The app downloads `karimknaebel/surge-large` (~1.4 GB) into
 `~/Library/Caches/MLXSurGe/` on first use via `SurGeModelDownloader`. Because the

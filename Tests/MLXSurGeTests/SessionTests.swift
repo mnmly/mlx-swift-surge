@@ -57,12 +57,23 @@ final class SessionTests: XCTestCase {
         XCTAssertEqual(r.iterations, 2)
         XCTAssertGreaterThan(r.medianSeconds, 0)
 
-        // Point-cloud path (the app's RealityKit view consumes this).
+        // Point-cloud path.
         let cloud = session.inferPointCloud(image, maxPoints: 50_000)
         XCTAssertGreaterThan(cloud.count, 0)
         XCTAssertLessThanOrEqual(cloud.count, 50_000)
         XCTAssertEqual(cloud.positions.count, cloud.count * 3)
         XCTAssertEqual(cloud.colors.count, cloud.count * 4)
         XCTAssertGreaterThan(cloud.radius, 0)
+
+        // Full geometry path (point cloud + mesh + normal texture for the app).
+        let geo = session.inferGeometry(image, maxPoints: 50_000, meshStride: 2)
+        XCTAssertGreaterThan(geo.pointCount, 0)
+        XCTAssertEqual(geo.pointUVs.count, geo.pointCount * 2)
+        XCTAssertGreaterThan(geo.vertexCount, 0)
+        XCTAssertGreaterThan(geo.faceCount, 0)
+        XCTAssertEqual(geo.meshIndices.count, geo.faceCount * 3)
+        XCTAssertEqual(geo.meshUVs.count, geo.vertexCount * 2)
+        XCTAssertEqual(geo.photoRGBA.count, geo.texWidth * geo.texHeight * 4)
+        XCTAssertEqual(geo.normalRGBA.count, geo.texWidth * geo.texHeight * 4)
     }
 }

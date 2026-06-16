@@ -36,8 +36,8 @@ final class SurGeViewModel {
     var phase: Phase = .needsModel
     var status: String = ""
     var inputImage: CGImage?
-    var pointCloud: SurGePointCloud?
-    var inferenceID = 0   // bumped per result; keys the RealityView for a clean rebuild
+    var geometry: SurGeGeometry?
+    var inferenceID = 0   // bumped per result; keys each RealityView for a clean rebuild
     var lastSeconds: Double?
 
     private let cacheDir = SurGeModelDownloader.defaultCacheDirectory()
@@ -79,7 +79,7 @@ final class SurGeViewModel {
         // "Open Image…" button) can't drive the session concurrently.
         guard phase == .ready else { return }
         inputImage = cgImage
-        pointCloud = nil
+        geometry = nil
         phase = .inferring
         status = "Running inference…"
 
@@ -107,19 +107,20 @@ final class SurGeViewModel {
                 await MainActor.run { [weak self] in self?.session = session }
             }
 
-            // SurGePointCloud is Sendable — produce it off-main, hand it back.
-            let (cloud, secs): (SurGePointCloud, Double) = autoreleasepool {
+            // SurGeGeometry is Sendable — produce it off-main, hand it back.
+            let (geo, secs): (SurGeGeometry, Double) = autoreleasepool {
                 let image = MLXArray(floats, [1, h, w, 3])
                 let start = Date()
-                let cloud = session.inferPointCloud(image)
-                return (cloud, Date().timeIntervalSince(start))
+                let geo = session.inferGeometry(image)
+                return (geo, Date().timeIntervalSince(start))
             }
             await MainActor.run { [weak self] in
-                self?.pointCloud = cloud
+                self?.geometry = geo
                 self?.inferenceID += 1
                 self?.lastSeconds = secs
                 self?.phase = .ready
-                self?.status = String(format: "%d points in %.2f s", cloud.count, secs)
+                self?.status = String(
+                    format: "%d points · %d faces · %.2f s", geo.pointCount, geo.faceCount, secs)
             }
         }
     }
@@ -176,10 +177,17 @@ struct ContentView: View {
                 .frame(maxWidth: 320)
 
             case .ready, .inferring:
-                HStack(spacing: 12) {
-                    imagePane(vm.inputImage, label: "Input")
-                    pointCloudPane
+                Grid(horizontalSpacing: 12, verticalSpacing: 12) {
+                    GridRow {
+                        imagePane(vm.inputImage, label: "Input")
+                        geometryPane(.pointCloud, label: "Point cloud")
+                    }
+                    GridRow {
+                        geometryPane(.texturedMesh, label: "Textured mesh")
+                        geometryPane(.normalMesh, label: "Normal mesh")
+                    }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 HStack {
                     Button("Open Image…") { openImage() }
                         .disabled(vm.phase == .inferring)
@@ -192,43 +200,43 @@ struct ContentView: View {
             }
         }
         .padding()
-        .frame(minWidth: 560, minHeight: 420)
+        .frame(minWidth: 900, minHeight: 640)
     }
 
     @ViewBuilder
     private func imagePane(_ image: CGImage?, label: String) -> some View {
         VStack(spacing: 4) {
-            if let image {
-                Image(decorative: image, scale: 1)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(maxWidth: 256, maxHeight: 256)
-                    .background(Color.black.opacity(0.05))
-            } else {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.gray.opacity(0.1))
-                    .frame(width: 256, height: 256)
-                    .overlay(Text("—").foregroundStyle(.tertiary))
+            ZStack {
+                RoundedRectangle(cornerRadius: 8).fill(Color.gray.opacity(0.1))
+                if let image {
+                    Image(decorative: image, scale: 1)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                } else {
+                    Text("—").foregroundStyle(.tertiary)
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             Text(label).font(.caption)
         }
     }
 
     @ViewBuilder
-    private var pointCloudPane: some View {
+    private func geometryPane(_ kind: SurGeRenderKind, label: String) -> some View {
         VStack(spacing: 4) {
             ZStack {
                 RoundedRectangle(cornerRadius: 8).fill(Color.black.opacity(0.85))
-                if let cloud = vm.pointCloud, cloud.count > 0 {
-                    PointCloudView(cloud: cloud)
+                if let g = vm.geometry, g.pointCount > 0 {
+                    SurGeRealityView(geometry: g, kind: kind)
                         .id(vm.inferenceID)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                 } else {
                     Text(vm.phase == .inferring ? "…" : "—").foregroundStyle(.tertiary)
                 }
             }
-            .frame(width: 256, height: 256)
-            Text("Point cloud").font(.caption)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            Text(label).font(.caption)
         }
     }
 
