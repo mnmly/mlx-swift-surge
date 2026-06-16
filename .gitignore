@@ -1,10 +1,10 @@
 # Xcode / Swift
+# (the Examples/SURGEDemo .xcodeproj IS tracked; only user-specific state is ignored)
 .build/
 .swiftpm/
 .xcdd/
-*.xcodeproj/
 xcuserdata/
-*.xcworkspace/
+*.xcuserstate
 DerivedData/
 *.playground/playground.xcworkspace
 
@@ -31,3 +31,6 @@ Tests/Fixtures/*.safetensors
 
 # DocC build output (served via gh-pages / Actions, not from main)
 /docs/
+
+# App build derived data
+.xcdd-app/

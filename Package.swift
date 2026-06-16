@@ -38,7 +38,7 @@ let package = Package(
                 "MLXSurGe",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
-            path: "Tools/surge-bench"
+            path: "Examples/surge-bench"
         ),
         .testTarget(
             name: "MLXSurGeTests",

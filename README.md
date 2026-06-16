@@ -118,13 +118,32 @@ For reference, `Benchmarks/torch_surge_bench.py` (Torch **CPU** — the only ava
 reference, since NATTEN OOMs on MPS) is ~8.5 s at 1024 tokens.
 
 ```bash
-# Leak check (active memory stays flat across iterations); add --fused for the kernel:
-swift run -c release surge-bench --weights <snapshot-dir> --tokens min --iterations 30 --fused
+# Build the CLI (use xcodebuild, not `swift run` — that can't load MLX's metallib):
+xcodebuild -scheme surge-bench -configuration Release -destination 'platform=macOS' -derivedDataPath .xcdd build
+# Leak check (active memory stays flat across iterations); --no-fused for the gather path:
+.xcdd/Build/Products/Release/surge-bench --weights <snapshot-dir> --tokens min --iterations 30
 ```
 
 `active_mem_delta_mb=0.0` across iterations confirms **no leak** — the multi-GB
 `peak_mem_mb` is MLX's reusable buffer cache, not a leak. Bound it in long-lived
 consumers with `--cache-limit-mb` (or `GPU.set(cacheLimit:)`).
+
+## Project layout
+
+The CLI and the SwiftUI app drive the **same engine** via a single library-side
+``SurGeSession`` (load → infer → benchmark); each frontend owns only its loop and
+presentation. See `Sources/MLXSurGe/SurGeSession.swift`.
+
+| Path | What |
+|------|------|
+| `Sources/MLXSurGe/` | Library: model, `SurGeSession`, `SurGeModelDownloader` |
+| `Examples/surge-bench/` | CLI benchmark (drives `SurGeSession`) |
+| `Examples/SURGEDemo/` | SwiftUI macOS app: pick an image → depth, with a **Download Model** button |
+
+The app downloads `karimknaebel/surge-large` (~1.4 GB) into
+`~/Library/Caches/MLXSurGe/` on first use via `SurGeModelDownloader`. Because the
+app is sandboxed, enable the **Outgoing Connections (Client)** capability for the
+download to work.
 
 ## Documentation
 

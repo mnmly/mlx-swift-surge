@@ -7,14 +7,14 @@ import MLX
 import MLXSurGe
 
 @main
-struct SurGeBench: ParsableCommand {
+struct SurGeBench: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "surge-bench",
         abstract: "Benchmark MLX Swift SurGe inference and check for leaks."
     )
 
-    @Option(name: .shortAndLong, help: "Path to HuggingFace snapshot (config.json + model.safetensors).")
-    var weights: String
+    @Option(name: .shortAndLong, help: "HuggingFace snapshot dir (config.json + model.safetensors). Defaults to the on-device cache.")
+    var weights: String?
 
     @Option(name: .shortAndLong, help: "Input image path (optional; synthetic image used if omitted).")
     var input: String? = nil
@@ -43,6 +43,9 @@ struct SurGeBench: ParsableCommand {
     @Flag(name: .long, inversion: .prefixedNo, help: "Use the fused neighborhood-attention Metal kernel (default). --no-fused for the gather reference.")
     var fused: Bool = true
 
+    @Flag(name: .long, help: "Download the model into the cache first if it's missing.")
+    var download: Bool = false
+
     func parseTokens() -> SurGeTokens {
         switch tokens.lowercased() {
         case "min": return .min
@@ -51,16 +54,30 @@ struct SurGeBench: ParsableCommand {
         }
     }
 
-    func run() throws {
-        let targetDtype: DType = (dtype == "float16") ? .float16 : .float32
-
+    func run() async throws {
         if cacheLimitMB > 0 {
             GPU.set(cacheLimit: cacheLimitMB * 1024 * 1024)
         }
 
+        // Resolve weights: explicit path, else the shared on-device cache.
+        let cacheDir = SurGeModelDownloader.defaultCacheDirectory()
+        let weightsURL = weights.map { URL(fileURLWithPath: $0) } ?? cacheDir
+        if download && !SurGeModelDownloader.isDownloaded(at: weightsURL) {
+            print("downloading model to \(weightsURL.path) ...")
+            try await SurGeModelDownloader().download(to: weightsURL) { frac in
+                print(String(format: "  %.0f%%", frac * 100))
+            }
+        }
+
+        let cfg = SurGeSessionConfig(
+            weightsPath: weightsURL.path,
+            dtype: dtype == "float16" ? .float16 : .float32,
+            useFusedKernel: fused,
+            tokens: parseTokens(),
+            forceProjection: forceProjection)
+
         let loadStart = CFAbsoluteTimeGetCurrent()
-        let model = try SurGeModel.fromPretrained(
-            path: weights, dtype: targetDtype, useFusedKernel: fused)
+        let session = try SurGeSession.load(cfg)
         let loadSeconds = CFAbsoluteTimeGetCurrent() - loadStart
 
         let image: MLXArray
@@ -74,28 +91,7 @@ struct SurGeBench: ParsableCommand {
         }
         eval(image)
 
-        let tok = parseTokens()
-        let runOnce: () -> Void = {
-            let out = model.infer(
-                image: image, tokens: tok, resizeOutput: true,
-                forceProjection: forceProjection)
-            eval(Array(out.values))
-        }
-
-        for _ in 0..<max(0, warmup) { runOnce() }
-
-        let memBefore = GPU.activeMemory
-        var times: [Double] = []
-        for _ in 0..<max(1, iterations) {
-            let start = CFAbsoluteTimeGetCurrent()
-            runOnce()
-            times.append(CFAbsoluteTimeGetCurrent() - start)
-        }
-        let memAfter = GPU.activeMemory
-
-        let mean = times.reduce(0, +) / Double(times.count)
-        let sorted = times.sorted()
-        let median = sorted[sorted.count / 2]
+        let r = session.benchmark(image: image, warmup: warmup, iterations: iterations)
 
         print("backend=mlx-swift")
         print("model=karimknaebel/surge-large")
@@ -106,15 +102,13 @@ struct SurGeBench: ParsableCommand {
         print("force_projection=\(forceProjection)")
         print(String(format: "load_s=%.6f", loadSeconds))
         print("warmup=\(warmup)")
-        print("iterations=\(times.count)")
-        print(String(format: "mean_s=%.6f", mean))
-        print(String(format: "median_s=%.6f", median))
-        print(String(format: "min_s=%.6f", sorted.first ?? 0))
-        print(String(format: "max_s=%.6f", sorted.last ?? 0))
-        print(String(format: "active_mem_before_mb=%.1f", Double(memBefore) / 1e6))
-        print(String(format: "active_mem_after_mb=%.1f", Double(memAfter) / 1e6))
-        print(String(format: "active_mem_delta_mb=%.1f", Double(Int(memAfter) - Int(memBefore)) / 1e6))
-        print(String(format: "peak_mem_mb=%.1f", Double(GPU.peakMemory) / 1e6))
+        print("iterations=\(r.iterations)")
+        print(String(format: "mean_s=%.6f", r.meanSeconds))
+        print(String(format: "median_s=%.6f", r.medianSeconds))
+        print(String(format: "min_s=%.6f", r.minSeconds))
+        print(String(format: "max_s=%.6f", r.maxSeconds))
+        print(String(format: "active_mem_delta_mb=%.1f", Double(r.activeMemoryDeltaBytes) / 1e6))
+        print(String(format: "peak_mem_mb=%.1f", Double(r.peakMemoryBytes) / 1e6))
     }
 }
 
@@ -131,7 +125,7 @@ private func loadImageAsNHWC(path: String) -> (MLXArray, Int, Int)? {
         return NSImage(contentsOf: url)?.cgImage(forProposedRect: nil, context: nil, hints: nil)
     }()
     guard let cg = cgImage else { return nil }
-    return (cgImageToNHWC(cg), cg.height, cg.width)
+    return (cgImageToNHWC(cg).expandedDimensions(axis: 0), cg.height, cg.width)
 }
 
 #else

@@ -11,7 +11,7 @@
 import Foundation
 import MLX
 
-public enum SurGeTokens {
+public enum SurGeTokens: Sendable, Equatable {
     case min
     case max
     case count(Int)

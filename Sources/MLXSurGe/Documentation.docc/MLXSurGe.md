@@ -39,6 +39,14 @@ let intrinsics = prediction.intrinsics! // (3, 3)
 - ``SurGeTokens``
 - ``MLXSurGe``
 
+### Shared driver (CLI + app)
+
+- ``SurGeSession``
+- ``SurGeSessionConfig``
+- ``SurGeFrame``
+- ``SurGeBenchResult``
+- ``SurGeModelDownloader``
+
 ### Model and configuration
 
 - ``SurGeModel``
