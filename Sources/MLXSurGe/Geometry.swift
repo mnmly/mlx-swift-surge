@@ -86,8 +86,10 @@ extension SurGeSession {
             normalRGBA[i * 4 + 3] = 255
         }
 
+        // RealityKit samples textures with v=0 at the top, but pixel row 0 is
+        // also the top — empirically the result was vertically flipped, so flip v.
         @inline(__always) func uv(_ row: Int, _ col: Int) -> (Float, Float) {
-            ((Float(col) + 0.5) / Float(W), (Float(row) + 0.5) / Float(H))
+            ((Float(col) + 0.5) / Float(W), 1 - (Float(row) + 0.5) / Float(H))
         }
         @inline(__always) func rub(_ idx: Int) -> (Float, Float, Float) {
             (p[idx * 3 + 0], -p[idx * 3 + 1], -p[idx * 3 + 2])
